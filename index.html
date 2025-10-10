@@ -7,13 +7,16 @@
     body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
     h1 { font-size: 1.5em; margin-bottom: 1em; }
     label { font-weight: bold; display: block; margin-top: 1em; }
-    textarea { width: 100%; height: 100px; margin-top: 0.5em; }
+    textarea, input { width: 100%; margin-top: 0.5em; }
     button { margin-top: 2em; padding: 10px 20px; font-size: 1em; }
   </style>
 </head>
 <body>
   <h1 id="title">載入中...</h1>
   <form id="responseForm">
+    <input type="text" id="name" placeholder="姓名" required />
+    <input type="text" id="organization" placeholder="單位" />
+    <input type="text" id="titleInput" placeholder="職稱" />
     <div id="questions"></div>
     <button type="submit">提交回覆</button>
   </form>
@@ -22,11 +25,10 @@
     const params = new URLSearchParams(location.search);
     const interviewId = params.get("interviewId");
 
-    fetch(`https://your-api.com/api/interview?interviewId=${interviewId}`)
+    fetch(`https://your-cloud-function-url/api/interview?interviewId=${interviewId}`)
       .then(res => res.json())
       .then(data => {
         document.getElementById("title").textContent = data.title || "採訪標題";
-
         const container = document.getElementById("questions");
         const questions = JSON.parse(data.questionsJson || "[]");
 
@@ -42,7 +44,32 @@
 
     document.getElementById("responseForm").addEventListener("submit", function(e) {
       e.preventDefault();
-      alert("尚未串接回覆 API，請稍後實作。");
+      const name = document.getElementById("name").value.trim();
+      const organization = document.getElementById("organization").value.trim();
+      const title = document.getElementById("titleInput").value.trim();
+      const answers = Array.from(document.querySelectorAll("textarea")).map(t => t.value.trim());
+
+      const payload = {
+        interviewId,
+        name,
+        organization,
+        title,
+        answers,
+        submittedAt: Date.now()
+      };
+
+      fetch("https://your-cloud-function-url/api/response", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        alert("回覆已送出！");
+      })
+      .catch(err => {
+        alert("送出失敗：" + err.message);
+      });
     });
   </script>
 </body>
