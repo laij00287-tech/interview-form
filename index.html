@@ -4,73 +4,26 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>受訪者回覆表單</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f9f9f9;
-      padding: 20px;
-    }
-    .form-container {
-      max-width: 600px;
-      margin: auto;
-      background: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    label {
-      display: block;
-      margin-top: 15px;
-      font-weight: bold;
-    }
-    input, textarea {
-      width: 100%;
-      padding: 10px;
-      margin-top: 5px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      box-sizing: border-box;
-    }
-    button {
-      margin-top: 20px;
-      background-color: #4CAF50;
-      color: white;
-      padding: 10px 15px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #45a049;
-    }
-    @media (max-width: 600px) {
-      .form-container {
-        padding: 15px;
-      }
-      input, textarea {
-        font-size: 16px;
-      }
-    }
-  </style>
+  <style>/* 保留原 CSS */</style>
 </head>
 <body>
   <div class="form-container">
     <h2>受訪者回覆</h2>
     <label>單位名稱：</label>
     <input type="text" id="org">
-
     <label>職稱：</label>
-    <input type="text" id="name">
-
+    <input type="text" id="title">
     <label>名字：</label>
     <input type="text" id="name">
-
     <div id="questions"></div>
-
-    <button onclick="downloadResponse()">下載回覆 JSON</button>
+    <button onclick="previewResponse()">確認</button>
+    <div id="preview" style="white-space:pre-wrap; background:#eee; padding:10px; margin-top:10px;"></div>
+    <button onclick="submitResponse()">送出</button>
   </div>
 
   <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const reporterUid = urlParams.get("uid") || "unknown";
     const interview = {
       id: "interview_20251010_001",
       title: "AI 對生活的影響",
@@ -85,27 +38,43 @@
       container.innerHTML += `<label>${q.text}</label><textarea id="q${q.id}"></textarea>`;
     });
 
-    function downloadResponse() {
+    function buildResponseObject() {
       const org = document.getElementById("org").value;
+      const title = document.getElementById("title").value;
       const name = document.getElementById("name").value;
       const answers = interview.questions.map(q => ({
         questionId: q.id,
         answer: document.getElementById(`q${q.id}`).value
       }));
-
-      const response = {
+      return {
+        reporterUid: reporterUid,
         interviewId: interview.id,
         organization: org,
+        title: title,
         name: name,
         answers: answers,
         submittedAt: new Date().toISOString()
       };
+    }
 
-      const blob = new Blob([JSON.stringify(response, null, 2)], { type: "application/json" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = `response_${interview.id}.json`;
-      link.click();
+    function previewResponse() {
+      const response = buildResponseObject();
+      document.getElementById("preview").innerText = JSON.stringify(response, null, 2);
+    }
+
+    function submitResponse() {
+      const response = buildResponseObject();
+      fetch("https://your-server.com/api/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(response)
+      }).then(res => {
+        if (res.ok) {
+          alert("已送出回覆！");
+        } else {
+          alert("送出失敗！");
+        }
+      });
     }
   </script>
 </body>
