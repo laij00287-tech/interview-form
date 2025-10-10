@@ -4,20 +4,27 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>受訪者回覆表單</title>
-  <style>/* 保留原 CSS */</style>
+  <style>
+    body { font-family: Arial; background: #f9f9f9; padding: 20px; }
+    .form-container { max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    label { display: block; margin-top: 15px; font-weight: bold; }
+    input, textarea { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    button { margin-top: 20px; background-color: #4CAF50; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
+    button:hover { background-color: #45a049; }
+    #preview { white-space: pre-wrap; background: #eee; padding: 10px; margin-top: 10px; border-radius: 4px; }
+  </style>
 </head>
 <body>
   <div class="form-container">
     <h2>受訪者回覆</h2>
-    <label>單位名稱：</label>
-    <input type="text" id="org">
-    <label>職稱：</label>
-    <input type="text" id="title">
-    <label>名字：</label>
-    <input type="text" id="name">
+    <label>單位名稱：</label><input type="text" id="org">
+    <label>職稱：</label><input type="text" id="title">
+    <label>名字：</label><input type="text" id="name">
     <div id="questions"></div>
+
     <button onclick="previewResponse()">確認</button>
-    <div id="preview" style="white-space:pre-wrap; background:#eee; padding:10px; margin-top:10px;"></div>
+    <div id="preview"></div>
+    <button onclick="goBack()">返回上一頁</button>
     <button onclick="submitResponse()">送出</button>
   </div>
 
@@ -25,7 +32,7 @@
     const urlParams = new URLSearchParams(window.location.search);
     const reporterUid = urlParams.get("uid") || "unknown";
     const interview = {
-      id: "interview_20251010_001",
+      id: urlParams.get("interview") || "interview_20251010_001",
       title: "AI 對生活的影響",
       questions: [
         { id: 1, text: "你認為 AI 會取代哪些工作？" },
@@ -60,6 +67,10 @@
     function previewResponse() {
       const response = buildResponseObject();
       document.getElementById("preview").innerText = JSON.stringify(response, null, 2);
+    }
+
+    function goBack() {
+      document.getElementById("preview").innerText = "";
     }
 
     function submitResponse() {
