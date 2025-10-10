@@ -11,7 +11,7 @@
     input, textarea { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
     button { margin-top: 20px; background-color: #4CAF50; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
     button:hover { background-color: #45a049; }
-    #preview { white-space: pre-wrap; background: #eee; padding: 10px; margin-top: 10px; border-radius: 4px; }
+    #preview { white-space: pre-wrap; background: #eee; padding: 10px; margin-top: 10px; border-radius: 4px; font-family: monospace; }
   </style>
 </head>
 <body>
@@ -22,17 +22,19 @@
     <label>名字：</label><input type="text" id="name">
     <div id="questions"></div>
 
-    <button onclick="previewResponse()">確認</button>
+    <button onclick="previewResponse()">預覽回覆內容</button>
     <div id="preview"></div>
-    <button onclick="goBack()">返回上一頁</button>
-    <button onclick="submitResponse()">送出</button>
+    <button onclick="goBack()">清除預覽</button>
+    <button onclick="submitResponse()">產生回覆連結</button>
   </div>
 
   <script>
     const urlParams = new URLSearchParams(window.location.search);
     const reporterUid = urlParams.get("uid") || "unknown";
+    const interviewId = urlParams.get("interview") || "interview_20251010_001";
+
     const interview = {
-      id: urlParams.get("interview") || "interview_20251010_001",
+      id: interviewId,
       title: "AI 對生活的影響",
       questions: [
         { id: 1, text: "你認為 AI 會取代哪些工作？" },
@@ -41,6 +43,7 @@
     };
 
     const container = document.getElementById("questions");
+    container.innerHTML += `<label>採訪標題：</label><div style="margin-top:5px;">${interview.title}</div>`;
     interview.questions.forEach(q => {
       container.innerHTML += `<label>${q.text}</label><textarea id="q${q.id}"></textarea>`;
     });
@@ -66,7 +69,13 @@
 
     function previewResponse() {
       const response = buildResponseObject();
-      document.getElementById("preview").innerText = JSON.stringify(response, null, 2);
+      let text = `採訪標題：${interview.title}\n\n`;
+      text += `受訪者：${response.name}\n單位：${response.organization}\n職稱：${response.title}\n\n`;
+      response.answers.forEach((a, i) => {
+        text += `Q${i + 1}: ${interview.questions[i].text}\nA${i + 1}: ${a.answer}\n\n`;
+      });
+      text += `記者 UID：${reporterUid}\n採訪 ID：${interview.id}\n提交時間：${response.submittedAt}`;
+      document.getElementById("preview").innerText = text;
     }
 
     function goBack() {
@@ -83,8 +92,12 @@
         if (res.ok) {
           alert("已送出回覆！");
         } else {
-          alert("送出失敗！");
+          res.text().then(msg => {
+            alert("送出失敗：" + msg);
+          });
         }
+      }).catch(err => {
+        alert("送出失敗：" + err.message);
       });
     }
   </script>
