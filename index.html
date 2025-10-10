@@ -2,20 +2,70 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>受訪者回覆表單</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f9f9f9;
+      padding: 20px;
+    }
+    .form-container {
+      max-width: 600px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 20px;
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    @media (max-width: 600px) {
+      .form-container {
+        padding: 15px;
+      }
+      input, textarea {
+        font-size: 16px;
+      }
+    }
+  </style>
 </head>
 <body>
-  <h2>受訪者回覆</h2>
+  <div class="form-container">
+    <h2>受訪者回覆</h2>
+    <label>單位名稱：</label>
+    <input type="text" id="org">
 
-  <label>單位名稱：</label><br>
-  <input type="text" id="org"><br><br>
+    <label>直稱名字：</label>
+    <input type="text" id="name">
 
-  <label>直稱名字：</label><br>
-  <input type="text" id="name"><br><br>
+    <div id="questions"></div>
 
-  <div id="questions"></div>
-
-  <button onclick="downloadResponse()">下載回覆 JSON</button>
+    <button onclick="downloadResponse()">下載回覆 JSON</button>
+  </div>
 
   <script>
     const interview = {
@@ -29,7 +79,7 @@
 
     const container = document.getElementById("questions");
     interview.questions.forEach(q => {
-      container.innerHTML += `<label>${q.text}</label><br><textarea id="q${q.id}"></textarea><br><br>`;
+      container.innerHTML += `<label>${q.text}</label><textarea id="q${q.id}"></textarea>`;
     });
 
     function downloadResponse() {
