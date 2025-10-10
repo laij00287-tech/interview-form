@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>受訪者回覆表單</title>
+</head>
+<body>
+  <h2>受訪者回覆</h2>
+
+  <label>單位名稱：</label><br>
+  <input type="text" id="org"><br><br>
+
+  <label>直稱名字：</label><br>
+  <input type="text" id="name"><br><br>
+
+  <div id="questions"></div>
+
+  <button onclick="downloadResponse()">下載回覆 JSON</button>
+
+  <script>
+    const interview = {
+      id: "interview_20251010_001",
+      title: "AI 對生活的影響",
+      questions: [
+        { id: 1, text: "你認為 AI 會取代哪些工作？" },
+        { id: 2, text: "AI 是否會影響人類的創造力？" }
+      ]
+    };
+
+    const container = document.getElementById("questions");
+    interview.questions.forEach(q => {
+      container.innerHTML += `<label>${q.text}</label><br><textarea id="q${q.id}"></textarea><br><br>`;
+    });
+
+    function downloadResponse() {
+      const org = document.getElementById("org").value;
+      const name = document.getElementById("name").value;
+      const answers = interview.questions.map(q => ({
+        questionId: q.id,
+        answer: document.getElementById(`q${q.id}`).value
+      }));
+
+      const response = {
+        interviewId: interview.id,
+        organization: org,
+        name: name,
+        answers: answers,
+        submittedAt: new Date().toISOString()
+      };
+
+      const blob = new Blob([JSON.stringify(response, null, 2)], { type: "application/json" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `response_${interview.id}.json`;
+      link.click();
+    }
+  </script>
+</body>
+</html>
