@@ -1,74 +1,88 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <title>採訪回覆</title>
-  <style>
-    body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
-    h1 { font-size: 1.5em; margin-bottom: 1em; }
-    label { font-weight: bold; display: block; margin-top: 1em; }
-    textarea, input { width: 100%; margin-top: 0.5em; }
-    button { margin-top: 2em; padding: 10px 20px; font-size: 1em; }
-  </style>
+  <meta charset="UTF-8" />
+  <title>採訪回覆表單</title>
+  <script src="https://www.gstatic.com/firebasejs/10.5.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.5.2/firebase-firestore.js"></script>
 </head>
 <body>
-  <h1 id="title">載入中...</h1>
-  <form id="responseForm">
-    <input type="text" id="name" placeholder="姓名" required />
-    <input type="text" id="organization" placeholder="單位" />
-    <input type="text" id="titleInput" placeholder="職稱" />
-    <div id="questions"></div>
-    <button type="submit">提交回覆</button>
-  </form>
+  <h1>採訪回覆</h1>
+  <div id="form-container">
+    <p>載入中...</p>
+  </div>
 
   <script>
-    const params = new URLSearchParams(location.search);
-    const interviewId = params.get("interviewId");
+    // ✅ Firebase 初始化
+    const firebaseConfig = {
+      apiKey: "AIzaSyA5i1kLoMUdbAYw7Baiy_7HeHqY5VbSc-",
+      projectId: "reporterapp-1cf28"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-    fetch(`https://your-cloud-function-url/api/interview?interviewId=${interviewId}`)
-      .then(res => res.json())
-      .then(data => {
-        document.getElementById("title").textContent = data.title || "採訪標題";
-        const container = document.getElementById("questions");
-        const questions = JSON.parse(data.questionsJson || "[]");
+    // ✅ 取得 interviewId
+    const urlParams = new URLSearchParams(window.location.search);
+    const interviewId = urlParams.get("interviewId");
 
-        questions.forEach((q, i) => {
-          const label = document.createElement("label");
-          label.textContent = `問題 ${i + 1}：${q}`;
-          const textarea = document.createElement("textarea");
-          textarea.name = `answer${i}`;
-          container.appendChild(label);
-          container.appendChild(textarea);
+    if (!interviewId) {
+      document.getElementById("form-container").innerHTML = "<p>錯誤：未提供 interviewId。</p>";
+      throw new Error("Missing interviewId");
+    }
+
+    // ✅ 從 Firestore 讀取問題
+    db.collection("interviews").doc(interviewId).get().then(doc => {
+      if (!doc.exists) {
+        document.getElementById("form-container").innerHTML = "<p>找不到此採訪。</p>";
+        return;
+      }
+
+      const data = doc.data();
+      const questions = data.questions || [];
+      const formHtml = `
+        <form id="reply-form">
+          <label>姓名（可留空）：<br><input type="text" name="name" /></label><br><br>
+          <label>單位（可留空）：<br><input type="text" name="organization" /></label><br><br>
+          <label>職稱（可留空）：<br><input type="text" name="title" /></label><br><br>
+          ${questions.map((q, i) => `
+            <label>${q}<br><textarea name="answer${i}" rows="3" cols="50"></textarea></label><br><br>
+          `).join("")}
+          <label>簽名（可留空）：<br><input type="text" name="signature" /></label><br><br>
+          <button type="submit">送出回覆</button>
+        </form>
+        <div id="result"></div>
+      `;
+      document.getElementById("form-container").innerHTML = formHtml;
+
+      // ✅ 表單送出事件
+      document.getElementById("reply-form").addEventListener("submit", function(e) {
+        e.preventDefault();
+        const form = e.target;
+        const answers = questions.map((_, i) => form[`answer${i}`].value.trim());
+        const payload = {
+          interviewId,
+          name: form.name.value.trim(),
+          organization: form.organization.value.trim(),
+          title: form.title.value.trim(),
+          answers,
+          signature: form.signature.value.trim(),
+          submittedAt: Date.now()
+        };
+
+        // ✅ 呼叫 Functions API
+        fetch("https://asia-east1-reporterapp-1cf28.cloudfunctions.net/api/response", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(result => {
+          document.getElementById("result").innerHTML = "<p>✅ 回覆已送出，感謝您的參與！</p>";
+          form.reset();
+        })
+        .catch(err => {
+          document.getElementById("result").innerHTML = `<p>❌ 發生錯誤：${err.message}</p>`;
         });
-      });
-
-    document.getElementById("responseForm").addEventListener("submit", function(e) {
-      e.preventDefault();
-      const name = document.getElementById("name").value.trim();
-      const organization = document.getElementById("organization").value.trim();
-      const title = document.getElementById("titleInput").value.trim();
-      const answers = Array.from(document.querySelectorAll("textarea")).map(t => t.value.trim());
-
-      const payload = {
-        interviewId,
-        name,
-        organization,
-        title,
-        answers,
-        submittedAt: Date.now()
-      };
-
-      fetch("https://your-cloud-function-url/api/response", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      })
-      .then(res => res.json())
-      .then(data => {
-        alert("回覆已送出！");
-      })
-      .catch(err => {
-        alert("送出失敗：" + err.message);
       });
     });
   </script>
