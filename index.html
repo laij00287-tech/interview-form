@@ -2,89 +2,14 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <title>採訪回覆表單</title>
-  <script src="https://www.gstatic.com/firebasejs/10.5.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.5.2/firebase-firestore.js"></script>
+  <title>Reporter Web 回覆平台</title>
+  <link rel="stylesheet" href="style.css" />
+  <script type="module" src="script.js"></script>
 </head>
 <body>
-  <h1>採訪回覆</h1>
-  <div id="form-container">
-    <p>載入中...</p>
+  <div class="container">
+    <h1>📰 問題回覆平台</h1>
+    <div id="questionList"></div>
   </div>
-
-  <script>
-    // ✅ Firebase 初始化
-    const firebaseConfig = {
-      apiKey: "AIzaSyA5i1kLoMUdbAYw7Baiy_7HeHqY5VbSc-",
-      projectId: "reporterapp-1cf28"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-
-    // ✅ 取得 interviewId
-    const urlParams = new URLSearchParams(window.location.search);
-    const interviewId = urlParams.get("interviewId");
-
-    if (!interviewId) {
-      document.getElementById("form-container").innerHTML = "<p>錯誤：未提供 interviewId。</p>";
-      throw new Error("Missing interviewId");
-    }
-
-    // ✅ 從 Firestore 讀取問題
-    db.collection("interviews").doc(interviewId).get().then(doc => {
-      if (!doc.exists) {
-        document.getElementById("form-container").innerHTML = "<p>找不到此採訪。</p>";
-        return;
-      }
-
-      const data = doc.data();
-      const questions = data.questions || [];
-      const formHtml = `
-        <form id="reply-form">
-          <label>姓名（可留空）：<br><input type="text" name="name" /></label><br><br>
-          <label>單位（可留空）：<br><input type="text" name="organization" /></label><br><br>
-          <label>職稱（可留空）：<br><input type="text" name="title" /></label><br><br>
-          ${questions.map((q, i) => `
-            <label>${q}<br><textarea name="answer${i}" rows="3" cols="50"></textarea></label><br><br>
-          `).join("")}
-          <label>簽名（可留空）：<br><input type="text" name="signature" /></label><br><br>
-          <button type="submit">送出回覆</button>
-        </form>
-        <div id="result"></div>
-      `;
-      document.getElementById("form-container").innerHTML = formHtml;
-
-      // ✅ 表單送出事件
-      document.getElementById("reply-form").addEventListener("submit", function(e) {
-        e.preventDefault();
-        const form = e.target;
-        const answers = questions.map((_, i) => form[`answer${i}`].value.trim());
-        const payload = {
-          interviewId,
-          name: form.name.value.trim(),
-          organization: form.organization.value.trim(),
-          title: form.title.value.trim(),
-          answers,
-          signature: form.signature.value.trim(),
-          submittedAt: Date.now()
-        };
-
-        // ✅ 呼叫 Functions API
-        fetch("https://asia-east1-reporterapp-1cf28.cloudfunctions.net/api/response", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        })
-        .then(res => res.json())
-        .then(result => {
-          document.getElementById("result").innerHTML = "<p>✅ 回覆已送出，感謝您的參與！</p>";
-          form.reset();
-        })
-        .catch(err => {
-          document.getElementById("result").innerHTML = `<p>❌ 發生錯誤：${err.message}</p>`;
-        });
-      });
-    });
-  </script>
 </body>
 </html>
