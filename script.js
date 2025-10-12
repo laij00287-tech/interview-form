@@ -1,21 +1,27 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+// script.js
 
-// 🔧 Firebase 專案設定（請替換成你的 config）
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+import { getFirestore, collection, onSnapshot, doc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+// 請替換為你 Firebase 專案的 config
 const firebaseConfig = {
-  apiKey: "你的_API_KEY",
-  authDomain: "你的專案ID.firebaseapp.com",
-  projectId: "你的專案ID",
-  storageBucket: "你的專案ID.appspot.com",
-  messagingSenderId: "xxxxxxx",
-  appId: "1:xxxxxx:web:xxxxxx"
+  apiKey: "AIzaSyAS1k8LoWuUfD48yW7BaNjr_7HEvj7sVSc",
+  authDomain: "reporterapp-1cf28.firebaseapp.com",
+  projectId: "reporterapp-1cf28",
+  storageBucket: "reporterapp-1cf28.appspot.com",
+  messagingSenderId: "226849515931",
+  appId: "1:226849515931:android:fc96606681592dc56c193e"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
 const questionList = document.getElementById("questionList");
 
-onSnapshot(collection(db, "qa"), (snapshot) => {
+const qaCol = collection(db, "qa");
+const qaQuery = query(qaCol, orderBy("timestamp", "desc"));
+
+onSnapshot(qaQuery, (snapshot) => {
   questionList.innerHTML = "";
   snapshot.docs.forEach((docSnap) => {
     const data = docSnap.data();
@@ -30,7 +36,7 @@ onSnapshot(collection(db, "qa"), (snapshot) => {
   });
 });
 
-// --- 提交答案 (直接更新 Firestore) ---
+// 將答案寫入 Firestore
 window.submitAnswer = async (id) => {
   const answer = document.getElementById(`input-${id}`).value;
   const docRef = doc(db, "qa", id);
