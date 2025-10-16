@@ -13,6 +13,7 @@
         input { padding: 8px; margin: 5px; width: 300px; border-radius: 5px; border: 1px solid #ccc; }
         .error { color: red; }
         h2 { color: #333; }
+        .instructions { font-size: 14px; color: #666; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -24,100 +25,106 @@
             <button id="submitResponseButton">提交回應</button>
         </div>
         <div id="intervieweeError" class="error"></div>
-    </script>
-</body>
+        <div class="instructions">
+            操作說明：通過連結訪問此頁面後，問題將自動顯示。請在輸入框中輸入回應，點擊「提交回應」按鈕提交。
+        </div>
+    </div>
 
-<script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.15.0/firebase-app.js';
-    import { getFirestore, doc, getDoc, updateDoc, arrayUnion, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.15.0/firebase-firestore.js';
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.15.0/firebase-app.js';
+        import { getFirestore, doc, getDoc, updateDoc, arrayUnion, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.15.0/firebase-firestore.js';
 
-    try {
-        // Firebase 配置
-        const firebaseConfig = {
-            apiKey: "AIzaSyAS1k8LoWuUfD48yW7BaNjr_7HEvj7sVSc",
-            authDomain: "reporterapp-1cf28.firebaseapp.com",
-            projectId: "reporterapp-1cf28",
-            storageBucket: "reporterapp-1cf28.firebasestorage.app",
-            messagingSenderId: "226849515931",
-            appId: "1:226849515931:web:c0333ba7691ad47f6c193e",
-            measurementId: "G-MYWWGDQQRH"
-        };
+        try {
+            // Firebase 配置
+            const firebaseConfig = {
+                apiKey: "AIzaSyAS1k8LoWuUfD48yW7BaNjr_7HEvj7sVSc",
+                authDomain: "reporterapp-1cf28.firebaseapp.com",
+                projectId: "reporterapp-1cf28",
+                storageBucket: "reporterapp-1cf28.firebasestorage.app",
+                messagingSenderId: "226849515931",
+                appId: "1:226849515931:web:c0333ba7691ad47f6c193e",
+                measurementId: "G-MYWWGDQQRH"
+            };
 
-        // 初始化 Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+            // 初始化 Firebase
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
 
-        // 從 URL 獲取採訪 ID
-        const urlParams = new URLSearchParams(window.location.search);
-        const interviewId = urlParams.get('interviewId');
+            // 從 URL 獲取採訪 ID
+            const urlParams = new URLSearchParams(window.location.search);
+            const interviewId = urlParams.get('interviewId');
 
-        // 清空錯誤訊息
-        function clearErrors() {
-            document.getElementById("intervieweeError").innerText = "";
-        }
-
-        // 載入採訪問題
-        async function loadInterview() {
-            clearErrors();
-            if (!interviewId) {
-                document.getElementById("intervieweeError").innerText = "無效的採訪 ID";
-                return;
+            // 清空錯誤訊息
+            function clearErrors() {
+                document.getElementById("intervieweeError").innerText = "";
             }
 
-            try {
+            // 載入採訪問題
+            async function loadInterview() {
+                clearErrors();
+                if (!interviewId) {
+                    document.getElementById("intervieweeError").innerText = "無效的採訪 ID，請確認連結正確";
+                    return;
+                }
+
                 const docRef = doc(db, "interviews", interviewId);
                 const docSnap = await getDoc(docRef);
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    document.getElementById("questions").innerHTML = `
-                        <div class="question">
-                            <p><strong>問題：</strong> ${data.question}</p>
-                        </div>
-                    `;
-                    document.getElementById("responseForm").style.display = "block";
+                    const questionsDiv = document.getElementById("questions");
+                    if (questionsDiv) {
+                        questionsDiv.innerHTML = `
+                            <div class="question">
+                                <p><strong>問題：</strong> ${data.question}</p>
+                            </div>
+                        `;
+                        const responseForm = document.getElementById("responseForm");
+                        if (responseForm) {
+                            responseForm.style.display = "block";
+                        }
+                    }
                 } else {
-                    document.getElementById("intervieweeError").innerText = "找不到該採訪";
+                    document.getElementById("intervieweeError").innerText = "找不到該採訪，請確認 ID 有效";
                 }
-            } catch (error) {
-                console.error("載入採訪錯誤:", error);
-                document.getElementById("intervieweeError").innerText = `載入失敗: ${error.message}`;
             }
+
+            // 提交回應
+            async function submitResponse() {
+                clearErrors();
+                const responseInput = document.getElementById("responseInput");
+                if (!responseInput || !responseInput.value.trim()) {
+                    document.getElementById("intervieweeError").innerText = "請輸入回應";
+                    return;
+                }
+
+                try {
+                    const docRef = doc(db, "interviews", interviewId);
+                    await updateDoc(docRef, {
+                        responses: arrayUnion({
+                            text: responseInput.value.trim(),
+                            submittedAt: serverTimestamp()
+                        })
+                    });
+                    alert("回應已提交");
+                    responseInput.value = "";
+                } catch (error) {
+                    console.error("提交回應錯誤:", error);
+                    document.getElementById("intervieweeError").innerText = `提交失敗: ${error.message}`;
+                }
+            }
+
+            // 初始化載入問題
+            loadInterview();
+
+            // 綁定提交按鈕
+            const submitButton = document.getElementById("submitResponseButton");
+            if (submitButton) {
+                submitButton.addEventListener("click", submitResponse);
+            }
+
+        } catch (error) {
+            console.error("Firebase SDK 載入失敗:", error);
+            document.getElementById("intervieweeError").innerText = `無法載入 Firebase SDK，請檢查網路連線或稍後重試: ${error.message}`;
         }
-
-        // 提交回應
-        async function submitResponse() {
-            clearErrors();
-            const response = document.getElementById("responseInput").value;
-            if (!response) {
-                document.getElementById("intervieweeError").innerText = "請輸入回應";
-                return;
-            }
-
-            try {
-                const docRef = doc(db, "interviews", interviewId);
-                await updateDoc(docRef, {
-                    responses: arrayUnion({
-                        text: response,
-                        submittedAt: serverTimestamp()
-                    })
-                });
-                alert("回應已提交");
-                document.getElementById("responseInput").value = "";
-            } catch (error) {
-                console.error("提交回應錯誤:", error);
-                document.getElementById("intervieweeError").innerText = `提交失敗: ${error.message}`;
-            }
-        }
-
-        // 初始化載入問題
-        loadInterview();
-
-        // 綁定提交按鈕
-        document.getElementById("submitResponseButton").addEventListener("click", submitResponse);
-
-    } catch (error) {
-        console.error("Firebase SDK 載入失敗:", error);
-        document.getElementById("intervieweeError").innerText = `無法載入 Firebase SDK，請檢查網路連線或稍後重試: ${error.message}`;
-    }
-</script>
+    </script>
 </html>
