@@ -1,70 +1,123 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
-  <meta charset="UTF-8" />
-  <title>Reporter Web 回覆平台</title>
-  <link rel="stylesheet" href="style.css" />
-  <script type="module" src="script.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>受訪者回應</title>
+    <style>
+        body { font-family: 'Noto Sans TC', Arial, sans-serif; margin: 20px; }
+        .section { padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .question { border: 1px solid #ccc; padding: 10px; margin: 5px 0; border-radius: 5px; }
+        button { padding: 8px 15px; margin: 5px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        input { padding: 8px; margin: 5px; width: 300px; border-radius: 5px; border: 1px solid #ccc; }
+        .error { color: red; }
+        h2 { color: #333; }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h1>📰 問題回覆平台</h1>
-    <div id="questionList"></div>
-  </div>
+    <div class="section" id="intervieweeSection">
+        <h2>受訪者介面</h2>
+        <div id="questions"></div>
+        <div id="responseForm" style="display: none;">
+            <input id="responseInput" placeholder="輸入您的回應">
+            <button id="submitResponseButton">提交回應</button>
+        </div>
+        <div id="intervieweeError" class="error"></div>
+    </script>
 </body>
-  <!-- Firebase 核心與 Database SDK -->
+
 <script type="module">
-  // Import SDKs
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-  import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.15.0/firebase-app.js';
+    import { getFirestore, doc, getDoc, updateDoc, arrayUnion, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.15.0/firebase-firestore.js';
 
-  // Firebase 設定（使用你的專案資料）
-  const firebaseConfig = {
-    apiKey: "AIzaSyAS1k8LoWuUfD48yW7BaNjr_7HEvj7sVSc",
-    authDomain: "reporterapp-1cf28.firebaseapp.com",
-    databaseURL: "https://reporterapp-1cf28-default-rtdb.firebaseio.com",
-    projectId: "reporterapp-1cf28",
-    storageBucket: "reporterapp-1cf28.appspot.com",
-    messagingSenderId: "226849515931",
-    appId: "1:226849515931:web:fc96606681592dc56c193e"
-  };
+    try {
+        // Firebase 配置
+        const firebaseConfig = {
+            apiKey: "AIzaSyAS1k8LoWuUfD48yW7BaNjr_7HEvj7sVSc",
+            authDomain: "reporterapp-1cf28.firebaseapp.com",
+            projectId: "reporterapp-1cf28",
+            storageBucket: "reporterapp-1cf28.firebasestorage.app",
+            messagingSenderId: "226849515931",
+            appId: "1:226849515931:web:c0333ba7691ad47f6c193e",
+            measurementId: "G-MYWWGDQQRH"
+        };
 
-  // 初始化
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
+        // 初始化 Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
-  // 🔹表單提交
-  const form = document.getElementById("interviewForm");
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
+        // 從 URL 獲取採訪 ID
+        const urlParams = new URLSearchParams(window.location.search);
+        const interviewId = urlParams.get('interviewId');
 
-    const name = document.getElementById("name").value;
-    const question = document.getElementById("question").value;
+        // 清空錯誤訊息
+        function clearErrors() {
+            document.getElementById("intervieweeError").innerText = "";
+        }
 
-    // 推送至 Realtime Database
-    push(ref(db, "interview/questions"), {
-      name,
-      question,
-      timestamp: new Date().toISOString()
-    });
+        // 載入採訪問題
+        async function loadInterview() {
+            clearErrors();
+            if (!interviewId) {
+                document.getElementById("intervieweeError").innerText = "無效的採訪 ID";
+                return;
+            }
 
-    form.reset();
-    alert("✅ 已送出問題，等待回答");
-  });
+            try {
+                const docRef = doc(db, "interviews", interviewId);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    document.getElementById("questions").innerHTML = `
+                        <div class="question">
+                            <p><strong>問題：</strong> ${data.question}</p>
+                        </div>
+                    `;
+                    document.getElementById("responseForm").style.display = "block";
+                } else {
+                    document.getElementById("intervieweeError").innerText = "找不到該採訪";
+                }
+            } catch (error) {
+                console.error("載入採訪錯誤:", error);
+                document.getElementById("intervieweeError").innerText = `載入失敗: ${error.message}`;
+            }
+        }
 
-  // 🔹即時接收 App 回覆
-  const answersDiv = document.getElementById("answers");
-  const answersRef = ref(db, "interview/answers");
+        // 提交回應
+        async function submitResponse() {
+            clearErrors();
+            const response = document.getElementById("responseInput").value;
+            if (!response) {
+                document.getElementById("intervieweeError").innerText = "請輸入回應";
+                return;
+            }
 
-  onValue(answersRef, (snapshot) => {
-    answersDiv.innerHTML = "";
-    snapshot.forEach((child) => {
-      const data = child.val();
-      const el = document.createElement("p");
-      el.textContent = `${data.name}：${data.answer}`;
-      answersDiv.appendChild(el);
-    });
-  });
+            try {
+                const docRef = doc(db, "interviews", interviewId);
+                await updateDoc(docRef, {
+                    responses: arrayUnion({
+                        text: response,
+                        submittedAt: serverTimestamp()
+                    })
+                });
+                alert("回應已提交");
+                document.getElementById("responseInput").value = "";
+            } catch (error) {
+                console.error("提交回應錯誤:", error);
+                document.getElementById("intervieweeError").innerText = `提交失敗: ${error.message}`;
+            }
+        }
+
+        // 初始化載入問題
+        loadInterview();
+
+        // 綁定提交按鈕
+        document.getElementById("submitResponseButton").addEventListener("click", submitResponse);
+
+    } catch (error) {
+        console.error("Firebase SDK 載入失敗:", error);
+        document.getElementById("intervieweeError").innerText = `無法載入 Firebase SDK，請檢查網路連線或稍後重試: ${error.message}`;
+    }
 </script>
-
 </html>
